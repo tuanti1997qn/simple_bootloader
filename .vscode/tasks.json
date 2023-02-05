@@ -1,0 +1,18 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "myFlash",
+            "type": "shell",
+            "command": "gdb-multiarch -nx --batch  -ex 'target extended-remote /dev/ttyBmpGdb' -ex 'monitor swdp_scan' -ex 'attach 1' -ex 'load' -ex 'compare-sections' -ex 'kill' ${workspaceRoot}/build/simple_bootloader.elf"
+        },
+        {
+            "type": "embedded-debug.flash",
+            "serialNumber": "<serial number of your device>",
+            "program": "${command:embedded-debug.getApplicationFile}",
+            "cmsisPack": "<path or URL of CMSIS Pack for your device>",
+            "problemMatcher": [],
+            "label": "embedded-debug.flash: Flash Device"
+        }
+    ]
+}
