@@ -58,7 +58,27 @@ static void MX_USART1_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+static cli_status_t help_func(int argc, char **argv);
+cli_status_t load_over_xmodem(int argc, char **argv);
+cli_status_t clear_flash(int argc, char **argv);
+void user_uart_println(char *string);
+cmd_t cmd_tbl[] = {
+    {
+        .cmd = "help",
+        .func = help_func
+    },
+    {
+      .cmd = "clear_flash",
+      .func = clear_flash
+    },
+    {
+      .cmd = "xmodem_flash",
+      .func = load_over_xmodem
+    }
+};
 
+cli_t cli;
+uint8_t rx_buffer;
 /* USER CODE END 0 */
 
 /**
@@ -77,7 +97,10 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+  cli.println = user_uart_println;
+  cli.cmd_tbl = cmd_tbl;
+  cli.cmd_cnt = sizeof(cmd_tbl)/sizeof(cmd_t);
+  cli_init(&cli);
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -92,9 +115,19 @@ int main(void)
   MX_CRC_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-
-  uint8_t rx_buffer[100];
-  UART_Start_Receive_IT(&huart1, rx_buffer, 100); 
+  
+  UART_Start_Receive_IT(&huart1, &rx_buffer, 1);
+  cli.println("Welcome to simple bootloader! \n\r");
+  cli.println("Press any key to stop at bootloader \r\n");
+  int tick = 3;
+  // while (tick--) {
+  //   uint8_t data;
+  //   cli.println("Timeout: ");
+  //   cli.println(tick + '0');
+  //   cli.println("\n\r");
+  //   if (HAL_UART_Receive(&huart1,  &data, 1, 1000) == HAL_OK) break;
+  //   while(1);
+  // }
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -110,10 +143,10 @@ int main(void)
     //   Error_Handler();
     // }
 
+    cli_process(&cli);
 
-
-    HAL_UART_Transmit(&huart1, "ahihi\n\r", 9, 1000);
-    HAL_Delay(1000);
+    // HAL_UART_Transmit(&huart1, "ahihi\n\r", 9, 1000);
+    // HAL_Delay(1000);
 
   }
   /* USER CODE END 3 */
@@ -269,9 +302,99 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   {
     // Do something with the received data
     // ...
+    // uint8_t rxData;
+    // char c = huart1.Instance->DR;
+
+    // if (rxData == '\r') {
+    //   HAL_UART_Transmit(&huart1, "\r\n", 2, 1000);
+    // } else {
+      HAL_UART_Transmit(&huart1, &rx_buffer, 1, 1000);    
+    // }
+    // HAL_UART_Receive_IT(huart, &rxData, 1);
+    // HAL_UART_Transmit(huart, &rxData, 1, 10000);
+      HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+    // HAL_UART_Receive_IT(&huart1, &data, 1);
+    // __HAL_UART_ENABLE_IT(&huart1,UART_IT_RXNE);
+    // data = huart1.Instance->DR;
+    // int i = 0;
+    cli_put(&cli, rx_buffer);
+
+    // if (rxData == '\r') {
+    // HAL_UART_Transmit(&huart1, "\r\n", 2, 1000);
+    // } else {
+    // HAL_UART_Transmit(&huart1, &data, 1, 1000);  
+    HAL_UART_Receive_IT(&huart1, &rx_buffer, 1);
   }
 }
 
+void user_uart_println(char *string)
+{
+    /* For example.. */
+    HAL_UART_Transmit(&huart1, string, strlen(string),1000);
+}
+
+cli_status_t help_func(int argc, char **argv)
+{
+    cli.println("HELP function executed\n\r");
+    return CLI_OK;
+}
+
+cli_status_t clear_flash(int argc, char **argv)
+{
+  HAL_FLASH_Unlock();
+  for (int i = 1; i <=5; i++) {
+    FLASH_Erase_Sector(i, VOLTAGE_RANGE_4);
+  }
+  HAL_FLASH_Lock();
+}
+
+cli_status_t program_flash(int argc, char **argv)
+{
+
+}
+
+
+xmodem_status_t xmodem_callback(uint8_t *data, uint8_t package_count) {
+  // data[0]++;
+  // uint8_t buff = 0x06;
+  // HAL_UART_Transmit(&huart1, &buff, 1, 100000);
+  // HAL_UART_Transmit(&huart1, "ahihi", 6, 100000);
+  // HAL_UART_Transmit(&huart1, package_count, 1, 100000);
+}
+
+xmodem_status_t xmodem_send_data(uint8_t *data, uint32_t length) {
+  HAL_UART_Transmit(&huart1, data, length, HAL_MAX_DELAY); 
+}
+
+xmodem_status_t xmodem_receive_data (uint8_t* data, uint32_t length) {
+  HAL_UART_Receive(&huart1, data, length , 1000);
+}
+
+cli_status_t load_over_xmodem(int argc, char **argv)
+{
+  xmodem_t xmodem;
+  xmodem.xmodem_receive_done_cb = xmodem_callback;
+  xmodem.xmodem_send_data = xmodem_send_data;
+  xmodem.xmodem_receive_data = xmodem_receive_data;
+  init_xmodem(&xmodem);
+  HAL_UART_AbortReceive_IT(&huart1);
+
+  // start_receive_data(&xmodem);
+  
+  uint8_t buff;
+  // HAL_UART_Receive(&huart1, &buff, 1 , HAL_MAX_DELAY);
+  while(1) process_receive_data(&xmodem, buff);
+  if (xmodem.data_byte_receive == 133) {
+    uint8_t send_buff = 0x06;
+    xmodem.xmodem_send_data(&send_buff, 1);
+    //   buff = 6;
+    //   xmodem.data_byte_receive = 0;
+    //   HAL_UART_Transmit(&huart1, &buff, 1, 100000);
+  }
+
+  // after done ,restart to normal
+  HAL_UART_Receive_IT(&huart1, &rx_buffer, 1);
+}
 /* USER CODE END 4 */
 
 /**

@@ -31,7 +31,8 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "cli.h"
+#include "xmodem.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -61,7 +62,7 @@ void Error_Handler(void);
 #define LED_GPIO_Port GPIOC
 
 /* USER CODE BEGIN Private defines */
-
+extern cli_t cli;
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
