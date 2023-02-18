@@ -54,7 +54,7 @@ uint32_t calcrc(char *ptr, int count)
     return (crc);
 }
 
-
+/*TODO: handle fail code, exception, this just a simple function that can work, i will update it later*/ 
 xmodem_status_t process_receive_data(xmodem_t *xmodem, uint8_t data) {
     uint8_t temp_buff;
     while (1) {
@@ -68,6 +68,11 @@ xmodem_status_t process_receive_data(xmodem_t *xmodem, uint8_t data) {
         // proccess byte count
         uint8_t byte_count[2];
         xmodem->xmodem_receive_data(byte_count, 2);
+        if (byte_count[0] != (0xff - byte_count[1])) {
+            uint8_t send_buff = NAK;
+            xmodem->xmodem_send_data(&send_buff, 1);
+            goto REPEAT;
+        }
 
         // process get data
         xmodem->xmodem_receive_data(receive_data , 128);
@@ -86,7 +91,7 @@ xmodem_status_t process_receive_data(xmodem_t *xmodem, uint8_t data) {
         
         crc_temp[0] = crc_result >>8 & 0xFF;
         crc_temp[1] = crc_result & 0xFF;
-        if (crc_temp[0] != crc[0] || crc_temp[1] != crc[1]) {       // TODO: implement calculate crc
+        if (crc_temp[0] != crc[0] || crc_temp[1] != crc[1]) {       
             uint8_t send_buff = NAK;
             xmodem->xmodem_send_data(&send_buff, 1);
             
