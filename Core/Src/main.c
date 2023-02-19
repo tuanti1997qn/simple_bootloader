@@ -59,8 +59,9 @@ static void MX_USART1_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 static cli_status_t help_func(int argc, char **argv);
-cli_status_t load_over_xmodem(int argc, char **argv);
 cli_status_t clear_flash(int argc, char **argv);
+cli_status_t load_over_xmodem(int argc, char **argv);
+cli_status_t boot_app(int argc, char **argv);
 void user_uart_println(char *string);
 cmd_t cmd_tbl[] = {
     {
@@ -74,6 +75,10 @@ cmd_t cmd_tbl[] = {
     {
       .cmd = "xmodem_flash",
       .func = load_over_xmodem
+    },
+    {
+      .cmd = "boot",
+      .func = boot_app
     }
 };
 
@@ -342,7 +347,7 @@ cli_status_t help_func(int argc, char **argv)
 cli_status_t clear_flash(int argc, char **argv)
 {
   HAL_FLASH_Unlock();
-  for (int i = 1; i <=5; i++) {
+  for (int i = 2; i <=5; i++) {       // because we will use sector 2-5, sector 0,1 as bootloader 
     FLASH_Erase_Sector(i, VOLTAGE_RANGE_4);
   }
   HAL_FLASH_Lock();
@@ -354,12 +359,18 @@ cli_status_t program_flash(int argc, char **argv)
 }
 
 
-xmodem_status_t xmodem_callback(uint8_t *data, uint8_t package_count) {
-  // data[0]++;
-  // uint8_t buff = 0x06;
-  // HAL_UART_Transmit(&huart1, &buff, 1, 100000);
-  // HAL_UART_Transmit(&huart1, "ahihi", 6, 100000);
-  // HAL_UART_Transmit(&huart1, package_count, 1, 100000);
+xmodem_status_t xmodem_callback(uint8_t *data,uint32_t data_length, uint8_t package_count) {
+  HAL_FLASH_Unlock(); // TODO: check size bla bla
+  for (uint32_t cnt =0; cnt < data_length; cnt ++){
+    HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, APP_BASE_ADDR + cnt, data[cnt] );
+  }
+}
+
+cli_status_t boot_app(int argc, char **argv) {
+  __set_MSP(*(volatile uint32_t*)APP_BASE_ADDR);
+  void (*func_ptr)(void) = APP_BASE_ADDR + 4;
+  HAL_DeInit();
+  (*func_ptr)();
 }
 
 xmodem_status_t xmodem_send_data(uint8_t *data, uint32_t length) {

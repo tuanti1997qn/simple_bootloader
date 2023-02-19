@@ -102,7 +102,7 @@ xmodem_status_t process_receive_data(xmodem_t *xmodem, uint8_t data) {
             goto REPEAT;
         }
 
-        xmodem->xmodem_receive_done_cb(receive_data, byte_count[0]);
+        xmodem->xmodem_receive_done_cb(receive_data, 128, byte_count[0]);
         uint8_t send_buff = ACK;
         xmodem->xmodem_send_data(&send_buff, 1);
 

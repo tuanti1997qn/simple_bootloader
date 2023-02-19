@@ -11,7 +11,7 @@ typedef enum
     XMODEM_CRC_WRONG
 }   xmodem_status_t;
 
-typedef xmodem_status_t (*xmodem_receive_done_cb_t) (uint8_t *data, uint8_t package_count);
+typedef xmodem_status_t (*xmodem_receive_done_cb_t) (uint8_t *data, uint32_t data_length, uint8_t package_count);
 typedef xmodem_status_t (*xmodem_send_data_t) (uint8_t* data, uint32_t length);
 typedef xmodem_status_t (*xmodem_receive_data_t) (uint8_t* data, uint32_t length);
 typedef uint32_t (*xmodem_custom_crc_calculator_t) (uint8_t *data, uint32_t length);
