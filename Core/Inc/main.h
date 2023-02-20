@@ -47,7 +47,7 @@ extern "C" {
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
-#define APP_BASE_ADDR 0x800800
+#define APP_BASE_ADDR 0x8008000
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/

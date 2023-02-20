@@ -346,11 +346,21 @@ cli_status_t help_func(int argc, char **argv)
 
 cli_status_t clear_flash(int argc, char **argv)
 {
+  cli.println("Clear Flash start\n\r");
+ 	FLASH_EraseInitTypeDef hFlashErase;
+	uint32_t sectorError;
+	HAL_StatusTypeDef status;
+
+  hFlashErase.TypeErase = FLASH_TYPEERASE_SECTORS;
+  hFlashErase.Sector = 2; // start sector
+  hFlashErase.NbSectors = 6;
+  hFlashErase.Banks = FLASH_BANK_1;
+  hFlashErase.VoltageRange = FLASH_VOLTAGE_RANGE_3;  
   HAL_FLASH_Unlock();
-  for (int i = 2; i <=5; i++) {       // because we will use sector 2-5, sector 0,1 as bootloader 
-    FLASH_Erase_Sector(i, VOLTAGE_RANGE_4);
-  }
+  status = (uint8_t) HAL_FLASHEx_Erase(&hFlashErase, &sectorError);
   HAL_FLASH_Lock();
+
+  cli.println("Clear Flash successful\n\r");
 }
 
 cli_status_t program_flash(int argc, char **argv)
@@ -362,15 +372,20 @@ cli_status_t program_flash(int argc, char **argv)
 xmodem_status_t xmodem_callback(uint8_t *data,uint32_t data_length, uint8_t package_count) {
   HAL_FLASH_Unlock(); // TODO: check size bla bla
   for (uint32_t cnt =0; cnt < data_length; cnt ++){
-    HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, APP_BASE_ADDR + cnt, data[cnt] );
+    HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, APP_BASE_ADDR + 128 * (package_count - 1) + cnt, data[cnt] );
   }
+  HAL_FLASH_Lock();
 }
+typedef void (*func_ptr_t)(void);
 
 cli_status_t boot_app(int argc, char **argv) {
-  __set_MSP(*(volatile uint32_t*)APP_BASE_ADDR);
-  void (*func_ptr)(void) = APP_BASE_ADDR + 4;
+
+  func_ptr_t func_ptr;
+  func_ptr = (func_ptr_t)(*(volatile uint32_t*) (APP_BASE_ADDR+4u));
+  uint32_t MSP_val = *(volatile uint32_t*)APP_BASE_ADDR;
   HAL_DeInit();
-  (*func_ptr)();
+  __set_MSP(MSP_val);
+  func_ptr();
 }
 
 xmodem_status_t xmodem_send_data(uint8_t *data, uint32_t length) {
@@ -393,18 +408,11 @@ cli_status_t load_over_xmodem(int argc, char **argv)
   // start_receive_data(&xmodem);
   
   uint8_t buff;
-  // HAL_UART_Receive(&huart1, &buff, 1 , HAL_MAX_DELAY);
-  while(1) process_receive_data(&xmodem, buff);
-  if (xmodem.data_byte_receive == 133) {
-    uint8_t send_buff = 0x06;
-    xmodem.xmodem_send_data(&send_buff, 1);
-    //   buff = 6;
-    //   xmodem.data_byte_receive = 0;
-    //   HAL_UART_Transmit(&huart1, &buff, 1, 100000);
-  }
+  process_receive_data(&xmodem, buff);
 
   // after done ,restart to normal
   HAL_UART_Receive_IT(&huart1, &rx_buffer, 1);
+  cli.println("Flash done\n\r");
 }
 /* USER CODE END 4 */
 
