@@ -125,14 +125,7 @@ int main(void)
   cli.println("Welcome to simple bootloader! \n\r");
   cli.println("Press any key to stop at bootloader \r\n");
   int tick = 3;
-  // while (tick--) {
-  //   uint8_t data;
-  //   cli.println("Timeout: ");
-  //   cli.println(tick + '0');
-  //   cli.println("\n\r");
-  //   if (HAL_UART_Receive(&huart1,  &data, 1, 1000) == HAL_OK) break;
-  //   while(1);
-  // }
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -142,11 +135,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
-    // if (HAL_UART_Receive_IT(&huart1, rx_buffer, 100) != HAL_OK)
-    // {
-    //   Error_Handler();
-    // }
 
     cli_process(&cli);
 
@@ -340,7 +328,11 @@ void user_uart_println(char *string)
 
 cli_status_t help_func(int argc, char **argv)
 {
-    cli.println("HELP function executed\n\r");
+    cli.println("\
+    Current support command\n\r\                                     
+    clear_flash: clear all application flash\n\r\
+    xmodem_flash: flash new application use xmodem protocol\n\r\
+    boot: jump to application\n\r");
     return CLI_OK;
 }
 
